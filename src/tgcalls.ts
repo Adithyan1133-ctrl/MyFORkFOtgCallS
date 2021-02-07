@@ -1,3 +1,5 @@
+// @ts-nocheck 
+
 import { Chat } from 'typegram';
 import { exec as _exec, spawn } from 'child_process';
 import { JoinVoiceCallResponse } from 'tgcalls/lib/types';
@@ -22,8 +24,9 @@ const cache = new Map<number, CachedConnection>();
 const ffmpegOptions = ['-c', 'copy', '-acodec', 'pcm_s16le', '-f', 's16le', '-ac', '1', '-ar', '65000', 'pipe:1'];
 
 ws.on('message', response => {
+console.log(response);
     const { _, data } = JSON.parse(response.toString());
-
+console.log(data);
     switch (_) {
         case 'get_join': {
             const connection = cache.get(data.chat_id);
@@ -40,8 +43,18 @@ ws.on('message', response => {
 });
 
 const downloadSong = async (url: string): Promise<Readable> => {
-    const { stdout } = await exec(`youtube-dl -f bestaudio -g -- "${url}"`);
-    const ffmpeg = spawn('ffmpeg', ['-y', '-i', stdout.trim(), ...ffmpegOptions]);
+    let { stdout } = await exec(`youtube-dl --version`);
+    console.log(stdout);
+    if (url.indexOf('youtu') > -1) {
+        let { stdout, stderr } = await exec(`youtube-dl -g -- "${url}"`);
+        url = stdout;
+    }
+    console.log(stdout);
+    const ffmpeg = spawn('ffmpeg', ['-y', '-i', url.trim(), ...ffmpegOptions]);
+    ffmpeg.stderr.on('data', d => {
+        console.log(d.toString());
+    })
+    // https://t.me/c/1185324811/6567
     return ffmpeg.stdout;
 };
 
@@ -81,6 +94,12 @@ const createConnection = async (chat: Chat.SupergroupChat): Promise<void> => {
     };
 
     cache.set(chat.id, cachedConnection);
+
+    stream.on('error', (error) => {
+        // handle the error
+        console.log(error);
+    });
+
     await connection.start(stream.createTrack());
 
     stream.on('finish', async () => {
@@ -93,13 +112,16 @@ const createConnection = async (chat: Chat.SupergroupChat): Promise<void> => {
 };
 
 export const addToQueue = async (chat: Chat.SupergroupChat, url: string): Promise<number | null> => {
+console.log(url);
+console.log(chat);
     if (!cache.has(chat.id)) {
         await createConnection(chat);
         return addToQueue(chat, url);
     }
 
     const { stream, queue } = cache.get(chat.id)!;
-
+console.log(stream);
+console.log(queue);
     if (stream.finished) {
         const readable = await downloadSong(url);
         stream.setReadable(readable);
@@ -138,3 +160,14 @@ export const skip = (chatId: number): boolean => {
 
     return false;
 };
+
+/**
+ * unFINISHed dreams !!!
+ */
+// export const getFromStream = (chatId: number): Promise<number | null> => {
+//     if (cache.has(chatId)) {
+//         const { stream, queue } = cache.get(chatId)!;
+//     }
+
+//     return null;
+// };

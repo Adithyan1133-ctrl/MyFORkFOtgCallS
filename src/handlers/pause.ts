@@ -11,5 +11,7 @@ export const pauseHandler = Composer.command(['pause', 'resume'], async ctx => {
     const paused = await pause(chat.id);
     const message = paused === null ? "There's nothing playing here." : paused ? 'Paused.' : 'Resumed.';
 
-    await ctx.reply(message);
+    await ctx.reply(message, {
+        reply_to_message_id: ctx.message.message_id
+    });
 });

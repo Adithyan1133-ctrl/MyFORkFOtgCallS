@@ -9,5 +9,7 @@ export const skipHandler = Composer.command('skip', ctx => {
     }
 
     const skipped = skip(chat.id);
-    ctx.reply(skipped ? 'Skipped.' : "There's no song playing.");
+    ctx.reply(skipped ? 'Skipped.' : "There's no song playing.", {
+        reply_to_message_id: ctx.message.message_id
+    });
 });
